@@ -1,0 +1,45 @@
+---
+- name: test
+  gather_facts: false
+  hosts: webservers
+  vars:
+    ansible_ssh_user: user
+  become: yes
+
+  pre_tasks:
+    - name: Validating the ssh port is open and
+      wait_for:
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        port: 22
+        delay: 5
+        timeout: 600
+        state: started
+        search_regex: OpenSSH
+
+  tasks:
+    - name: create test file
+      copy:
+        dest: /tmp/test
+        content: "RUKHLIKIA"
+
+    - name: Ensure Nginx is installed
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: copy index
+      template:
+        src: /home/ubuntu/index.html  # Путь к вашему файлу с содержимым сайта
+        dest: /var/www/html/index.html
+
+
+    - name: Start Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Check Nginx service status
+      debug:
+        msg: "Nginx is running: {{ ansible_facts.services['nginx.service'] is defined and ansible_facts.services['nginx.service'].state == 'running' }}"
